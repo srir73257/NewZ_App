@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Splash Theme -->
+    <style name="Theme.NewzA.Starting" parent="Theme.SplashScreen">
+
+        <!-- Background color -->
+        <item name="windowSplashScreenBackground">
+            #FCFAFF
+        </item>
+
+        <!-- Logo -->
+        <item name="windowSplashScreenAnimatedIcon">
+            @drawable/newz_logo
+        </item>
+
+        <!-- VERY IMPORTANT -->
+        <item name="postSplashScreenTheme">
+            @style/Theme.Newz
+        </item>
+
+    </style>
+
+    <!-- Main App Theme -->
+    <style name="Theme.Newz"
+        parent="Theme.Material3.Light.NoActionBar">
+
+        <item name="android:statusBarColor">
+            #6A1B9A
+        </item>
+
+    </style>
+
+</resources>
