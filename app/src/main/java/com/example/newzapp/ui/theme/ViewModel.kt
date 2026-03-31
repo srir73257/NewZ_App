@@ -19,6 +19,7 @@ import androidx.lifecycle.viewModelScope
 import coil.size.ViewSizeResolver
 import com.example.newzapp.DataBase.DDataBase
 import com.example.newzapp.DataBase.Entity
+import com.example.newzapp.DataClass.Result
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,10 +30,12 @@ import kotlinx.coroutines.launch
 
 class vieww(application: Application) : AndroidViewModel(application) {
 
+    var content by mutableStateOf("")
+
     private val _result = MutableStateFlow<JsonConveter?>(null)
     val result: StateFlow<JsonConveter?> = _result
 
-    private val apiKey = "YOUR_API_KEY"//paste ap key here
+    private val apiKey = "pub_d7c8ed5d1f2443ffbc7b2b0d00cc1269"  //paste ap key here
     private val obj = ApiService.create()
 
     private var searchJob: Job? = null
@@ -48,7 +51,7 @@ class vieww(application: Application) : AndroidViewModel(application) {
     private val Tag = "result"
 
 
-    var screen by mutableStateOf(false)
+    var screen by mutableStateOf(true )
     private val _offline = MutableStateFlow<List<Entity>>(emptyList())
     val offline: StateFlow<List<Entity>> = _offline
 
@@ -141,7 +144,7 @@ class vieww(application: Application) : AndroidViewModel(application) {
 
 
                 _result.value = response
-                state.value= State_d.Success
+                state.value = State_d.Success
 
 
 
@@ -198,5 +201,15 @@ class vieww(application: Application) : AndroidViewModel(application) {
                 && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
+    var id by mutableStateOf("")
+    fun artichle(): Result? {
+        try {
+            return _result.value?.results?.find { it.article_id == id }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+
+    }
 
 }

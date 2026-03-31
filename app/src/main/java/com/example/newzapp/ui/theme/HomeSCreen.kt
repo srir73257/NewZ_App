@@ -14,9 +14,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,8 +35,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmarks
@@ -47,6 +51,8 @@ import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
@@ -57,6 +63,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,6 +86,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.newzapp.R
 import com.exyte.animatednavbar.AnimatedNavigationBar
@@ -90,12 +99,10 @@ import kotlin.collections.emptyList
 
 
 @Composable
-fun Homescreen(vieww: vieww) {
+fun Homescreen(vieww: vieww, navController: NavController) {
 
     var content by rememberSaveable { mutableStateOf("") }
-    LaunchedEffect(Unit) {
-        vieww.getall("Sports")
-    }
+
 
     var selectedindex by remember { mutableIntStateOf(0) }
     val list = listOf(
@@ -195,6 +202,7 @@ fun Homescreen(vieww: vieww) {
                                         .clickable {
                                             if (content.isNotBlank()) {
                                                 vieww.getall(content)
+                                                vieww.content=content
                                                 content = ""
                                             } else {
 
@@ -237,7 +245,7 @@ fun Homescreen(vieww: vieww) {
                 AnimatedNavigationBar(
                     modifier = Modifier.height(70.dp),
                     selectedIndex = selectedindex,
-                    barColor = Color.Transparent    ,
+                    barColor = Color.Transparent,
                     ballColor = Color.White,
                     cornerRadius = shapeCornerRadius(cornerRadius = 0.9f),
                     ballAnimation = Parabolic(tween(durationMillis = 500)),
@@ -260,7 +268,7 @@ fun Homescreen(vieww: vieww) {
                                     imageVector = navitem.icon,
                                     contentDescription = null,
                                     modifier = Modifier.size(cornerSize),
-                                    tint =  Color.White
+                                    tint = Color.White
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
@@ -282,7 +290,7 @@ fun Homescreen(vieww: vieww) {
 
     ) { inner ->
         when (selectedindex) {
-            0 -> Home(modifier = Modifier.padding(inner), vieww, content)
+            0 -> Home(modifier = Modifier.padding(inner), vieww, content, navController)
             1 -> SavedScreen(modifier = Modifier.padding(inner), vieww)
         }
 
@@ -293,16 +301,28 @@ fun Homescreen(vieww: vieww) {
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Home(modifier: Modifier = Modifier, vieww: vieww, content: String) {
+fun Home(
+    modifier: Modifier = Modifier,
+    vieww: vieww,
+    content: String,
+    navController: NavController
+) {
     vieww.screen = true
-    val resultt by vieww.result.collectAsState()
+    val resultt by vieww.result.collectAsStateWithLifecycle()
     val newsList = resultt?.results ?: emptyList()
 
     val stateee by vieww.staee.collectAsState()
     var loading by remember { mutableStateOf(false) }
     var loading1 by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>("") }
+    LaunchedEffect(Unit) {
+
+        if (resultt?.results.isNullOrEmpty()) {
+            vieww.getall("Sports")
+        }
+    }
     when (stateee) {
         is State_d.Success -> {
             loading = false
@@ -361,104 +381,219 @@ fun Home(modifier: Modifier = Modifier, vieww: vieww, content: String) {
     ) {
 
 
-        if (loading) {
+        if (loading && newsList.isEmpty() ) {
             Box(
                 Modifier
                     .fillMaxWidth()
                     .offset(y = 5.dp), contentAlignment = Alignment.Center
             ) {
+
                 CircularProgressIndicator(strokeWidth = 3.dp, color = Color(0xFF6650a4))
             }
         } else if (message != null) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text(
-                    "$message",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 17.sp,
-                    color = Color(0xFF6650a4)
-                )
+            val scrollState = rememberScrollState()
+                PullToRefreshBox(
+                    isRefreshing = loading,
+                    onRefresh = {
+
+                        vieww.getall(if (vieww.content.isBlank()) "Sports" else vieww.content)
+
+
+                    },modifier = Modifier.fillMaxSize()
+                ) {
+                    Box(Modifier.fillMaxSize().verticalScroll(scrollState), contentAlignment = Alignment.Center) {
+
+                    Text(
+                        "$message",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 17.sp,
+                        color = Color(0xFF6650a4)
+                    )
+                }
+
             }
 
         } else {
-            LazyColumn(
-                state = lazy,
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                items(newsList, key = { it.article_id }) { data ->
-                    var expanded by remember { mutableStateOf(false) }
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 1000,
-                                    easing = LinearOutSlowInEasing, delayMillis = 50
-                                )
-                            )
+            PullToRefreshBox(
+                isRefreshing = loading,
+                onRefresh = {
 
-                            .padding(14.dp), colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF6650a4)
-                        ), shape = RoundedCornerShape(10)
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.Center
+                    vieww.getall(if (vieww.content.isBlank()) "Sports" else vieww.content)
+
+
+                }
+            ) {
+                LazyColumn(
+                    state = lazy,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    items(newsList, key = { it.article_id }) { data ->
+                        var expanded by remember { mutableStateOf(false) }
+
+                        ElevatedCard(
+                            modifier = Modifier
+                                .padding(14.dp)
+                                .fillMaxWidth()
+                                .animateContentSize(
+                                    animationSpec = tween(
+                                        durationMillis = 1000,
+                                        easing = LinearOutSlowInEasing, delayMillis = 50
+                                    )
+                                )
+                                .clickable(onClick = {
+                                    if (data.article_id == null) {
+                                        Toast.makeText(
+                                            contect,
+                                            "Unexpected Error",
+                                            Toast.LENGTH_SHORT
+                                        )
+                                            .show()
+                                    } else {
+                                        vieww.id = data.article_id
+                                        navController.navigate(Screen.Detail)
+                                    }
+                                }),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF6650a4)
+                            ),
+                            shape = RoundedCornerShape(10),
                         ) {
-                            Row {
-                                if (data.image_url != null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                Color(0xFF9B7BFA),
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Row {
+                                    if (data.image_url != null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(
+                                                    Color(0xFF9B7BFA),
+                                                    shape = RoundedCornerShape(
+                                                        topEnd = 5.dp,
+                                                        bottomEnd = 5.dp
+                                                    )
+                                                )
+                                                .size(height = 150.dp, width = 180.dp)
+                                        ) {
+                                            AsyncImage(
+                                                model = data.image_url,
+                                                contentDescription = "web image",
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(
+                                                        RoundedCornerShape(
+                                                            topEnd = 5.dp,
+                                                            bottomEnd = 5.dp
+                                                        )
+                                                    ),
+                                                contentScale = ContentScale.Crop
+                                            )
+
+                                        }
+
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.background(
+                                                Color.LightGray,
                                                 shape = RoundedCornerShape(
                                                     topEnd = 5.dp,
                                                     bottomEnd = 5.dp
                                                 )
                                             )
-                                            .size(height = 150.dp, width = 180.dp)
-                                    ) {
-                                        AsyncImage(
-                                            model = data.image_url,
-                                            contentDescription = "web image",
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(
-                                                    RoundedCornerShape(
-                                                        topEnd = 5.dp,
-                                                        bottomEnd = 5.dp
-                                                    )
-                                                ),
-                                            contentScale = ContentScale.Crop
-                                        )
-
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Error,
+                                                tint = Color.Gray,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(
+                                                    height = 150.dp,
+                                                    width = 180.dp
+                                                )
+                                            )
+                                        }
                                     }
-
-                                } else {
                                     Box(
-                                        modifier = Modifier.background(
-                                            Color.LightGray,
-                                            shape = RoundedCornerShape(
-                                                topEnd = 5.dp,
-                                                bottomEnd = 5.dp
+                                        modifier = Modifier
+                                            .height(150.dp)
+                                            .background(
+                                                brush = Brush.horizontalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF9B7BFA),
+                                                        Color(0xFF9879F5),
+                                                        Color(0xFF8569D7),
+                                                        Color(0xFF6650a4),
+                                                        Color(0xFF382C5B)
+                                                    )
+                                                )
                                             )
-                                        )
+                                            .padding(5.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.Error,
-                                            tint = Color.Gray,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(
-                                                height = 150.dp,
-                                                width = 180.dp
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .height(150.dp)
+                                                .padding(5.dp)
+                                        ) {
+                                            Text(
+                                                data.title ?: "No Title Available",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
                                             )
-                                        )
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            contentAlignment = Alignment.TopEnd
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    vieww.insert(
+                                                        title = data.title,
+                                                        Description = data.description,
+                                                        url = data.image_url ?: " "
+                                                    )
+                                                }, modifier = Modifier.offset(x = 7.dp, y = -7.dp)
+                                            ) {
+
+                                                Icon(
+                                                    Icons.Outlined.Bookmarks,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp),
+                                                    tint = Color.White
+                                                )
+                                            }
+                                        }
                                     }
                                 }
-                                Box(
+                                Column(
                                     modifier = Modifier
-                                        .height(150.dp)
+                                        .fillMaxWidth()
+
+                                        .background(
+                                            Color(0xFFE2DBFC)
+                                        )
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        data.description ?: "No Description Available",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF6650a4),
+                                        maxLines = if (expanded) Int.MAX_VALUE else 3,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier
+                                        .fillMaxSize()
                                         .background(
                                             brush = Brush.horizontalGradient(
                                                 colors = listOf(
@@ -470,124 +605,48 @@ fun Home(modifier: Modifier = Modifier, vieww: vieww, content: String) {
                                                 )
                                             )
                                         )
-                                        .padding(5.dp)
+                                        .clickable { expanded = !expanded }
                                 ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .height(150.dp)
-                                            .padding(5.dp)
-                                    ) {
-                                        Text(
-                                            data.title ?: "No Title Available",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
-                                        )
-                                    }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
-                                        contentAlignment = Alignment.TopEnd
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                vieww.insert(
-                                                    title = data.title,
-                                                    Description = data.description,
-                                                    url = data.image_url ?: " "
-                                                )
-                                            }, modifier = Modifier.offset(x = 7.dp, y = -7.dp)
-                                        ) {
-
-                                            Icon(
-                                                Icons.Outlined.Bookmarks,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(20.dp),
-                                                tint = Color.White
-                                            )
-                                        }
-                                    }
+                                    Text(
+                                        if (!expanded) "View More" else "View Less",
+                                        color = Color.White
+                                    )
+                                    Spacer(Modifier.width(5.dp))
+                                    Icon(
+                                        if (!expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                        tint = Color.White,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
+
+
                             }
+                        }
+
+                    }
+                    item {
+                        if (loading1) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-
-                                    .background(
-                                        Color(0xFFE2DBFC)
-                                    )
-                                    .padding(12.dp)
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(
-                                    data.description ?: "No Description Available",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF6650a4),
-                                    maxLines = if (expanded) Int.MAX_VALUE else 3,
-                                    overflow = TextOverflow.Ellipsis
+                                Spacer(Modifier.height(7.dp))
+                                CircularProgressIndicator(
+                                    strokeWidth = 3.dp,
+                                    color = Color(0xFF6650a4)
                                 )
-
+                                Spacer(Modifier.height(18.dp))
                             }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFF9B7BFA),
-                                                Color(0xFF9879F5),
-                                                Color(0xFF8569D7),
-                                                Color(0xFF6650a4),
-                                                Color(0xFF382C5B)
-                                            )
-                                        )
-                                    )
-                                    .clickable { expanded = !expanded }
-                            ) {
-                                Text(
-                                    if (!expanded) "View More" else "View Less",
-                                    color = Color.White
-                                )
-                                Spacer(Modifier.width(5.dp))
-                                Icon(
-                                    if (!expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                                    tint = Color.White,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-
-                        }
-                    }
-
-                }
-                item {
-                    if (loading1) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Spacer(Modifier.height(7.dp))
-                            CircularProgressIndicator(
-                                strokeWidth = 3.dp,
-                                color = Color(0xFF6650a4)
-                            )
-                            Spacer(Modifier.height(18.dp))
                         }
                     }
                 }
             }
+
+
         }
 
-    }
-
-}
+    }}

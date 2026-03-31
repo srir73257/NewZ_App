@@ -8,13 +8,14 @@ import androidx.activity.viewModels
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.newzapp.ui.theme.Appnav
 import com.example.newzapp.ui.theme.Homescreen
 import com.example.newzapp.ui.theme.vieww
 
 class MainActivity : ComponentActivity() {
 
     // FIXED position
-    private val view: vieww by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -26,7 +27,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
 
-            Homescreen(view)
+            Appnav()
 
         }
     }

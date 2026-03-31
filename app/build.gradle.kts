@@ -37,13 +37,17 @@ android {
     buildFeatures {
         compose = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    // This replaces the deprecated kotlinOptions
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
     }
 }
 
 dependencies {
 
+    implementation(libs.androidx.compose.animation)
     val room_version = "2.6.1"   // recommended stable
 
     // Room runtime
@@ -52,6 +56,7 @@ dependencies {
     // Kotlin + Coroutines support
     implementation("androidx.room:room-ktx:$room_version")
 
+    implementation("com.exyte:animated-navigation-bar:1.0.0")
     // Room compiler (KSP)
     ksp("androidx.room:room-compiler:$room_version")
 
@@ -100,7 +105,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    implementation("com.exyte:animated-navigation-bar:1.0.0")
+    implementation("androidx.navigation:navigation-compose:2.8.5")
 
 
 
